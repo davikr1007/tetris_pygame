@@ -63,6 +63,19 @@ def get_block_height():
         max_height = max(max_height, col_height)
     return max_height
 
+def handle_rotation():
+    """블록 회전 처리 및 벽 충돌 방지"""
+    global rotation, block_x
+
+    new_rotation = (rotation + 1) % 4  # 0~3 사이에서 순환 (90도 회전)
+    block_width = get_block_width()  # 회전 후 블록 너비 계산
+
+    # 벽을 넘으면 보정
+    if block_x + block_width > ROW_CELL_COUNT:
+        block_x = ROW_CELL_COUNT - block_width
+
+    rotation = new_rotation  # 회전 적용
+
 def handle_movement(event):
     """블록 이동 처리"""
     global block_x, block_y  # 블록 위치 변수 사용
@@ -78,6 +91,8 @@ def handle_movement(event):
     elif event.key == pygame.K_DOWN:  # 아래로 한 칸 이동
         if block_y + block_height < COL_CELL_COUNT:  # 블록 높이를 고려한 제한
             block_y += 1
+    elif event.key == pygame.K_UP:  # 블록 회전
+        handle_rotation()
     print(f"블록 좌표 - X: {block_x}, Y: {block_y}")
 
 def main():
