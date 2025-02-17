@@ -47,53 +47,61 @@ def draw_block():
                 # 테두리 추가
                 pygame.draw.rect(screen, GREY, (x, y, CELL_SIZE, CELL_SIZE), 1)
 
-def get_block_width():
-    """현재 블록의 실제 가로 크기 계산"""
-    max_width = 0
-    for row in current_block[rotation]:
-        width = sum(row)  # 1이 있는 개수만 카운트
-        max_width = max(max_width, width)
-    return max_width
-
-def get_block_height():
-    """현재 블록의 실제 세로 크기 계산"""
-    max_height = 0
-    for col in range(len(current_block[rotation][0])):  # 블록의 각 열을 확인
-        col_height = sum(row[col] for row in current_block[rotation])  # 세로 방향으로 1 개수 세기
-        max_height = max(max_height, col_height)
-    return max_height
-
-def handle_rotation():
-    """블록 회전 처리 및 벽 충돌 방지"""
-    global rotation, block_x
-
-    new_rotation = (rotation + 1) % 4  # 0~3 사이에서 순환 (90도 회전)
-    block_width = get_block_width()  # 회전 후 블록 너비 계산
-
-    # 벽을 넘으면 보정
-    if block_x + block_width > ROW_CELL_COUNT:
-        block_x = ROW_CELL_COUNT - block_width
-
-    rotation = new_rotation  # 회전 적용
+def is_valid_position(new_x, new_y, new_rotation):
+    """블록이 보드 내에 있는지 확인"""
+    block_shape = current_block[new_rotation]
+    for row_index, row in enumerate(block_shape):
+        for col_index, cell in enumerate(row):
+            if cell:
+                board_x = new_x + col_index
+                board_y = new_y + row_index
+                if board_x < 0 or board_x >= ROW_CELL_COUNT:  # 왼쪽/오른쪽 벽 체크
+                    return False
+                if board_y >= COL_CELL_COUNT:  # 바닥 체크
+                    return False
+    return True
 
 def handle_movement(event):
-    """블록 이동 처리"""
-    global block_x, block_y  # 블록 위치 변수 사용
-    block_width = get_block_width()  # 현재 블록의 실제 가로 크기
-    block_height = get_block_height()  # 현재 블록의 실제 세로 크기
+    """블록 이동 처리 (벽 충돌 방지)"""
+    global block_x, block_y
 
     if event.key == pygame.K_LEFT:  # 왼쪽 이동
-        if block_x > 0:
+        if is_valid_position(block_x - 1, block_y, rotation):
             block_x -= 1
     elif event.key == pygame.K_RIGHT:  # 오른쪽 이동
-        if block_x + block_width < ROW_CELL_COUNT:
+        if is_valid_position(block_x + 1, block_y, rotation):
             block_x += 1
-    elif event.key == pygame.K_DOWN:  # 아래로 한 칸 이동
-        if block_y + block_height < COL_CELL_COUNT:  # 블록 높이를 고려한 제한
+    elif event.key == pygame.K_DOWN:  # 아래 이동
+        if is_valid_position(block_x, block_y + 1, rotation):
             block_y += 1
-    elif event.key == pygame.K_UP:  # 블록 회전
+    elif event.key == pygame.K_UP:  # 회전
         handle_rotation()
-    print(f"블록 좌표 - X: {block_x}, Y: {block_y}")
+
+    print(f"블록 좌표 - X: {block_x}, Y: {block_y}, 회전: {rotation}")
+
+def handle_rotation():
+    """블록 회전 처리 (벽 충돌 방지)"""
+    global rotation, block_x
+
+    new_rotation = (rotation + 1) % 4  # 90도 회전
+
+    # 1. 회전이 가능한지 먼저 체크
+    if is_valid_position(block_x, block_y, new_rotation):
+        rotation = new_rotation  # 회전 적용
+    else:
+        # 2. 벽을 넘으면 이동하면서 회전 (Wall Kick 적용)
+        if is_valid_position(block_x - 1, block_y, new_rotation):
+            block_x -= 1
+            rotation = new_rotation
+        elif is_valid_position(block_x + 1, block_y, new_rotation):
+            block_x += 1
+            rotation = new_rotation
+        elif is_valid_position(block_x - 2, block_y, new_rotation):
+            block_x -= 2
+            rotation = new_rotation
+        elif is_valid_position(block_x + 2, block_y, new_rotation):
+            block_x += 2
+            rotation = new_rotation
 
 def main():
     clock = pygame.time.Clock()
@@ -109,7 +117,7 @@ def main():
                 running = False
             elif event.type == pygame.KEYDOWN:
                 handle_movement(event)  # 키 입력 처리
-
+            
         pygame.display.flip()
         clock.tick(60)  # 초당 60 프레임 설정
 
